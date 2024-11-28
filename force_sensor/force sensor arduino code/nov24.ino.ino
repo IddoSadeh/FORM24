@@ -14,7 +14,7 @@ void loop() {
   Serial.print(",");
   Serial.print(sensorValue);
   Serial.print(",");
-  Serial.println(voltage);
+  Serial.println(normalizedVoltage);
 
   delay(1000);  // Log data every second
 }
