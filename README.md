@@ -1,4 +1,11 @@
+# Circuit
+https://app.cirkitdesigner.com/project/71fc41e8-6a78-4813-9acc-cf6826728f7b
 
+![image](circuit_image.png)
+
+datasheets for both our boards:
+![image](ESP32DEVKITV1.png)
+![image](ESP32FEATHERV2.png)
 
 # IMU Form code
 
