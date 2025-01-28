@@ -9,7 +9,7 @@ input_data_path = '../data/';
 %%%%%%% PRE PROCESSING STEPS %%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % sensor file
-sensor_bin_filename = 'tdl-20241115-102918-r-ows.bin_pb';
+sensor_bin_filename = '2024-11-25-1732560701581.bin_pb';
 
 % sensor path
 full_sensor_bin_path = [input_data_path sensor_bin_filename];
