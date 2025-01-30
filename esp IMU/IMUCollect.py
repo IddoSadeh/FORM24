@@ -1,3 +1,5 @@
+# Read IMU databus values and put them into a csv file
+
 import serial
 import time
 import csv

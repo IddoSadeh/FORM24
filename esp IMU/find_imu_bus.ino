@@ -1,5 +1,8 @@
-#include <Wire.h>
+/*
+ * Determines whether there is a I2C device connected to microcontroller
+ */
 
+#include <Wire.h>
 
 void setup() {
   Wire.begin();

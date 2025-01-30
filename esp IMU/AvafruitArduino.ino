@@ -1,3 +1,8 @@
+/*
+ * Connects to IMU databus and prints IMU data to console
+ * **This is specifically for the ESP32 V2**
+ */
+
 #include <Wire.h>
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>

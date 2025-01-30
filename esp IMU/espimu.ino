@@ -1,5 +1,8 @@
+/*
+ * Connects to IMU databus and prints IMU data to console
+ * **This is specifically for the ESP32 DevKit**
+ */
 #include <Wire.h>
-
 
 #define IMU_ADDRESS 0x68 // Replace with your IMU's I2C address
 #define PWR_MGMT_1 0x6B
