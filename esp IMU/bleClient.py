@@ -1,7 +1,7 @@
 from bleak import BleakClient
 import asyncio
 
-ESP32_MAC_ADDRESS = "14:2b:2f:af:65:2a"  # Replace with your ESP32 MAC Address
+ESP32_MAC_ADDRESS = "14:2b:2f:ae:de:36"  # Replace with your ESP32 MAC Address 
 CHARACTERISTIC_UUID = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
 
 async def read_imu_data():
