@@ -67,6 +67,17 @@ class ESP32LoggerGUI:
         self.status_bar = ttk.Label(root, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W)
         self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
         
+        # Create the device info frame
+        self.device_info_frame = ttk.Frame(root)
+        self.device_info_frame.pack(side=tk.BOTTOM, fill=tk.X, before=self.status_bar)
+        
+        # Add device state indicator
+        self.state_label = ttk.Label(self.device_info_frame, text="Device State:")
+        self.state_label.pack(side=tk.LEFT, padx=(10, 5))
+        
+        self.state_value = ttk.Label(self.device_info_frame, text="Unknown", font=("Arial", 9, "bold"))
+        self.state_value.pack(side=tk.LEFT, padx=(0, 20))
+        
         # Start the background tasks
         self.start_async_loop()
 
@@ -179,8 +190,40 @@ class ESP32LoggerGUI:
         
         # Populate downloads list
         self.update_downloads_list()
+        
+    def update_device_state(self, state):
+        """Update the device state display in the UI"""
+        state_colors = {
+            "Idle": "#0000FF",       # Blue
+            "Connected": "#00FFFF",  # Cyan
+            "Logging": "#00FF00",    # Green
+            "Error": "#FF0000",      # Red
+            "Transferring": "#FF00FF" # Purple
+        }
+        
+        self.state_value.config(text=state)
+        if state in state_colors:
+            self.state_value.config(foreground=state_colors[state])
+        else:
+            self.state_value.config(foreground="black")
+
+    def update_downloads_list(self):
+        """Update the list of downloaded files"""
+        # Clear the list
+        self.downloads_list.delete(0, tk.END)
+        
+        # Get all files in the downloads directory
+        try:
+            files = os.listdir(DOWNLOAD_DIR)
+            for file in sorted(files):
+                if os.path.isfile(os.path.join(DOWNLOAD_DIR, file)):
+                    size = os.path.getsize(os.path.join(DOWNLOAD_DIR, file))
+                    self.downloads_list.insert(tk.END, f"{file} ({size} bytes)")
+        except Exception as e:
+            self.log_to_connection(f"Error updating downloads list: {str(e)}")
 
     def log_to_connection(self, message):
+        """Add a message to the connection log with timestamp"""
         self.conn_log.config(state=tk.NORMAL)
         timestamp = datetime.now().strftime("%H:%M:%S")
         self.conn_log.insert(tk.END, f"[{timestamp}] {message}\n")
@@ -188,6 +231,7 @@ class ESP32LoggerGUI:
         self.conn_log.config(state=tk.DISABLED)
 
     def log_to_logging(self, message):
+        """Add a message to the logging tab with timestamp"""
         self.logging_log.config(state=tk.NORMAL)
         timestamp = datetime.now().strftime("%H:%M:%S")
         self.logging_log.insert(tk.END, f"[{timestamp}] {message}\n")
@@ -292,12 +336,14 @@ class ESP32LoggerGUI:
             self.logging_status_var.set(f"Logging to {filename}")
             self.log_to_logging(f"Started logging to {filename}")
             is_logging = True
+            self.update_device_state("Logging")
             
         elif message.startswith("Logging stopped:"):
             filename = message.split(":", 1)[1].strip()
             self.logging_status_var.set("Not logging")
             self.log_to_logging(f"Stopped logging to {filename}")
             is_logging = False
+            self.update_device_state("Connected")
             
         elif message.startswith("Files on SD card:"):
             # Clear the file list
@@ -326,6 +372,9 @@ class ESP32LoggerGUI:
             bytes_received = 0
             file_transfer_in_progress = True
             
+            # Update device state
+            self.update_device_state("Transferring")
+            
             # Update progress UI
             self.progress_var.set(0)
             self.progress_label.config(text=f"Receiving {current_file_name} (0%)")
@@ -343,6 +392,9 @@ class ESP32LoggerGUI:
             file_transfer_in_progress = False
             current_file_name = ""
             self.progress_label.config(text="Transfer complete")
+            
+            # Update device state
+            self.update_device_state("Connected")
             
         elif file_transfer_in_progress:
             # This is file data
@@ -412,6 +464,7 @@ class ESP32LoggerGUI:
     def _update_ui_on_connect(self):
         self.status_var.set("Connected")
         self.log_to_connection("Connected successfully")
+        self.update_device_state("Connected")
         
         # Enable buttons that require connection
         self.start_logging_btn.config(state=tk.NORMAL)
@@ -450,6 +503,7 @@ class ESP32LoggerGUI:
     def _update_ui_on_disconnect(self):
         self.status_var.set("Disconnected")
         self.log_to_connection("Disconnected")
+        self.update_device_state("Idle")
         
         # Disable buttons that require connection
         self.start_logging_btn.config(state=tk.DISABLED)
@@ -580,20 +634,6 @@ class ESP32LoggerGUI:
                 
             except Exception as e:
                 self.root.after(0, lambda: self.log_to_connection(f"Error deleting file: {str(e)}"))
-
-    def update_downloads_list(self):
-        # Clear the list
-        self.downloads_list.delete(0, tk.END)
-        
-        # Get all files in the downloads directory
-        try:
-            files = os.listdir(DOWNLOAD_DIR)
-            for file in sorted(files):
-                if os.path.isfile(os.path.join(DOWNLOAD_DIR, file)):
-                    size = os.path.getsize(os.path.join(DOWNLOAD_DIR, file))
-                    self.downloads_list.insert(tk.END, f"{file} ({size} bytes)")
-        except Exception as e:
-            self.log_to_connection(f"Error updating downloads list: {str(e)}")
 
     def start_async_loop(self):
         global ble_loop

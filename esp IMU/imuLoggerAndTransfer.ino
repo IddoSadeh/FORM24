@@ -6,12 +6,21 @@
 #include <BLEUtils.h>
 #include <BLEServer.h>
 #include <BLE2902.h>
+#include <Adafruit_NeoPixel.h> // For controlling the onboard LED
 
 // Define pins
-#define SD_CS 33  // SD card chip select pin - UPDATED to match your hardware (CS to 33/A9)
-#define SPI_MISO 21  // MISO pin - UPDATED to match your hardware
-#define SPI_MOSI 19  // MOSI pin - UPDATED to match your hardware
-#define SPI_SCK  5   // SCK pin - UPDATED to match your hardware
+#define SD_CS 33  // SD card chip select pin
+#define SPI_MISO 21  // MISO pin
+#define SPI_MOSI 19  // MOSI pin
+#define SPI_SCK  5   // SCK pin
+#define NEOPIXEL_PIN 0  // ESP32 Featherboard v2 NeoPixel pin
+
+// Define LED states/colors
+#define LED_IDLE      0x0000FF  // Blue - ready but idle
+#define LED_CONNECTED 0x00FFFF  // Cyan - connected via BLE
+#define LED_LOGGING   0x00FF00  // Green - actively logging data
+#define LED_ERROR     0xFF0000  // Red - error state
+#define LED_TRANSFER  0xFF00FF  // Purple - transferring file
 
 // BLE UUIDs
 #define SERVICE_UUID        "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -26,6 +35,7 @@ void listFiles();
 void startFileTransfer(String filename);
 void continueFileTransfer();
 void deleteFile(String filename);
+void updateLED(uint32_t color);
 
 // BLE objects
 BLEServer *pServer = nullptr;
@@ -36,6 +46,9 @@ bool deviceConnected = false;
 // MPU6050 sensor
 MPU6050 imu;
 
+// NeoPixel for status LED
+Adafruit_NeoPixel pixels(1, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
+
 // SD Card status
 bool sdCardAvailable = false;
 
@@ -43,8 +56,10 @@ bool sdCardAvailable = false;
 bool isLogging = false;
 File dataFile;
 String currentFileName = "";
-unsigned long fileCounter = 0;
 const int CHUNK_SIZE = 512; // Size of data chunks for file transfer
+
+// Time tracking
+unsigned long startupTime = 0;
 
 // Command codes
 const char CMD_START_LOGGING = 'S';
@@ -64,6 +79,7 @@ class ServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) {
         deviceConnected = true;
         Serial.println("Device connected");
+        updateLED(LED_CONNECTED);
     }
 
     void onDisconnect(BLEServer* pServer) {
@@ -80,6 +96,9 @@ class ServerCallbacks: public BLEServerCallbacks {
             transferFile.close();
             isTransferring = false;
         }
+        
+        // Reset LED to idle state
+        updateLED(LED_IDLE);
         
         // Restart advertising
         pServer->getAdvertising()->start();
@@ -114,6 +133,7 @@ class CommandCallbacks: public BLECharacteristicCallbacks {
                         pDataCharacteristic->setValue(error.c_str());
                         pDataCharacteristic->notify();
                         Serial.println(error);
+                        updateLED(LED_ERROR);
                     }
                     break;
                     
@@ -131,6 +151,7 @@ class CommandCallbacks: public BLECharacteristicCallbacks {
                         pDataCharacteristic->setValue(error.c_str());
                         pDataCharacteristic->notify();
                         Serial.println(error);
+                        updateLED(LED_ERROR);
                     }
                     break;
                     
@@ -146,6 +167,7 @@ class CommandCallbacks: public BLECharacteristicCallbacks {
                         pDataCharacteristic->setValue(error.c_str());
                         pDataCharacteristic->notify();
                         Serial.println(error);
+                        updateLED(LED_ERROR);
                     }
                     break;
                     
@@ -161,6 +183,7 @@ class CommandCallbacks: public BLECharacteristicCallbacks {
                         pDataCharacteristic->setValue(error.c_str());
                         pDataCharacteristic->notify();
                         Serial.println(error);
+                        updateLED(LED_ERROR);
                     }
                     break;
                     
@@ -174,6 +197,14 @@ class CommandCallbacks: public BLECharacteristicCallbacks {
 
 void setup() {
     Serial.begin(115200);
+    
+    // Record startup time
+    startupTime = millis();
+    
+    // Initialize NeoPixel LED
+    pixels.begin();
+    updateLED(LED_IDLE); // Set initial blue idle state
+    
     Wire.begin();
     
     // Initialize MPU6050
@@ -181,9 +212,11 @@ void setup() {
     imu.initialize();
     if (!imu.testConnection()) {
         Serial.println("MPU6050 connection failed!");
-        while (1);
+        updateLED(LED_ERROR);
+        delay(1000);
+    } else {
+        Serial.println("MPU6050 connected!");
     }
-    Serial.println("MPU6050 connected!");
     
     // Initialize SPI with custom pins before SD card
     SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
@@ -197,6 +230,11 @@ void setup() {
         Serial.println("SD card initialization failed!");
         Serial.println("Continuing without SD card functionality");
         sdCardAvailable = false;
+        
+        // Briefly show error state
+        updateLED(LED_ERROR);
+        delay(1000);
+        updateLED(LED_IDLE);
     } else {
         Serial.println("SD card initialized!");
         sdCardAvailable = true;
@@ -287,10 +325,47 @@ void loop() {
     delay(10);
 }
 
+// Updates the onboard NeoPixel LED color
+void updateLED(uint32_t color) {
+    pixels.setPixelColor(0, color);
+    pixels.show();
+}
+
+// Gets a timestamp string for the current system uptime
+String getTimestampString() {
+    // Get current uptime in milliseconds
+    unsigned long now = millis();
+    unsigned long uptime = now - startupTime;
+    
+    // Calculate hours, minutes, seconds
+    unsigned long seconds = uptime / 1000;
+    unsigned long minutes = seconds / 60;
+    unsigned long hours = minutes / 60;
+    unsigned long days = hours / 24;
+    
+    seconds %= 60;
+    minutes %= 60;
+    hours %= 24;
+    
+    // Format timestamp as DD_HH-MM-SS
+    String timestamp = String(days) + "_";
+    
+    if (hours < 10) timestamp += "0";
+    timestamp += String(hours) + "-";
+    
+    if (minutes < 10) timestamp += "0";
+    timestamp += String(minutes) + "-";
+    
+    if (seconds < 10) timestamp += "0";
+    timestamp += String(seconds);
+    
+    return timestamp;
+}
+
 void startLogging() {
-    // Create a new filename with timestamp or counter
-    fileCounter++;
-    currentFileName = "/IMU_" + String(fileCounter) + ".csv";
+    // Create a new filename with timestamp
+    String timestamp = getTimestampString();
+    currentFileName = "/IMU_" + timestamp + ".csv";
     
     // Open the file for writing
     dataFile = SD.open(currentFileName, FILE_WRITE);
@@ -299,6 +374,9 @@ void startLogging() {
         // Write CSV header
         dataFile.println("Time,AccelX,AccelY,AccelZ,GyroX,GyroY,GyroZ");
         isLogging = true;
+        
+        // Update LED to indicate logging
+        updateLED(LED_LOGGING);
         
         // Notify client that logging has started
         String message = "Logging started: " + currentFileName;
@@ -313,6 +391,11 @@ void startLogging() {
         pDataCharacteristic->notify();
         
         Serial.println(error);
+        
+        // Show error with LED
+        updateLED(LED_ERROR);
+        delay(1000);
+        updateLED(LED_CONNECTED); // Return to connected state
     }
 }
 
@@ -321,6 +404,9 @@ void stopLogging() {
         // Close the file
         dataFile.close();
         isLogging = false;
+        
+        // Update LED back to connected state
+        updateLED(LED_CONNECTED);
         
         // Notify client that logging has stopped
         String message = "Logging stopped: " + currentFileName;
@@ -394,8 +480,6 @@ void listFiles() {
     Serial.println("File list sent");
 }
 
-// Replace these functions in your ESP32 Arduino code
-
 void startFileTransfer(String filename) {
     // Check if a transfer is already in progress
     if (isTransferring) {
@@ -410,6 +494,11 @@ void startFileTransfer(String filename) {
         pDataCharacteristic->notify();
         
         Serial.println(error);
+        
+        // Show error state
+        updateLED(LED_ERROR);
+        delay(1000);
+        updateLED(LED_CONNECTED);
         return;
     }
     
@@ -422,12 +511,20 @@ void startFileTransfer(String filename) {
         pDataCharacteristic->notify();
         
         Serial.println(error);
+        
+        // Show error state
+        updateLED(LED_ERROR);
+        delay(1000);
+        updateLED(LED_CONNECTED);
         return;
     }
     
     // Get file size
     fileSize = transferFile.size();
     bytesTransferred = 0;
+    
+    // Update LED to indicate transfer
+    updateLED(LED_TRANSFER);
     
     // Notify client that transfer is starting
     String message = "Transfer starting: " + filename + " (" + String(fileSize) + " bytes)";
@@ -460,6 +557,9 @@ void continueFileTransfer() {
     if (bytesToRead == 0) {
         transferFile.close();
         isTransferring = false;
+        
+        // Return LED to connected state
+        updateLED(LED_CONNECTED);
         
         // Notify client that transfer is complete
         String message = "Transfer complete";
@@ -506,6 +606,11 @@ void deleteFile(String filename) {
         pDataCharacteristic->notify();
         
         Serial.println(error);
+        
+        // Show error state
+        updateLED(LED_ERROR);
+        delay(1000);
+        updateLED(LED_CONNECTED);
         return;
     }
     
@@ -522,5 +627,10 @@ void deleteFile(String filename) {
         pDataCharacteristic->notify();
         
         Serial.println(error);
+        
+        // Show error state
+        updateLED(LED_ERROR);
+        delay(1000);
+        updateLED(LED_CONNECTED);
     }
 }
