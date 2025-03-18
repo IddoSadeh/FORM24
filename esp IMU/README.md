@@ -16,8 +16,18 @@
   - Viewing, downloading, and managing files on the ESP32's SD card
   - Live status updates and connection logs
 
-
 - **imuProcess.ipynb**: Jupyter notebook for processing and analyzing collected IMU data.
+  - Preprocess data (savitsky-golay filtering)
+  - Peak finding (Scipy - find peaks)
+  - Continuous Stroke Rate derivation
+
+- **batteryfw.ino (needs testing and revision)**: Arduino sketch that measures battery life (only works for esp32 with BAT or related pin)
+  - Advertises a BLE service to broadcast the battery level.
+  - Measures battery voltage using an analog pin and converts it to a percentage.
+  - Sends the battery percentage to a connected BLE client via notifications.
+
+- **battery.py (needs testing and revision)**: Python script for battery checking (Needs Testing)
+  - Simple script to fetch arduino serial output
 
 
 ### Old Core Project Files
