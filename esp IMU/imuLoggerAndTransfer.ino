@@ -322,7 +322,7 @@ void loop() {
     }
 
     // Button state checking
-    int reading = digitalRead(buttonPin); // Read the button state
+    int reading = digitalRead(LOGGING_PIN); // Read the button state
 
     // If the button state has changed, reset the debounce timer
     if (reading != lastButtonState) {
