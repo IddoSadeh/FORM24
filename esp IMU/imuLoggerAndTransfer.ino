@@ -14,6 +14,7 @@
 #define SPI_MOSI 19  // MOSI pin
 #define SPI_SCK  5   // SCK pin
 #define NEOPIXEL_PIN 0  // ESP32 Featherboard v2 NeoPixel pin
+#define LOGGING_PIN 12 // Button connected to GPIO pin 12
 
 // Define LED states/colors
 #define LED_IDLE      0x0000FF  // Blue - ready but idle
@@ -73,6 +74,12 @@ bool isTransferring = false;
 File transferFile;
 size_t fileSize = 0;
 size_t bytesTransferred = 0;
+
+// Logging Button state
+int buttonState = HIGH;    // Default state (not pressed)
+int lastButtonState = HIGH;
+unsigned long lastDebounceTime = 0;
+const unsigned long debounceDelay = 50; // Debounce time in milliseconds
 
 // BLE Server Callbacks
 class ServerCallbacks: public BLEServerCallbacks {
@@ -239,6 +246,10 @@ void setup() {
         Serial.println("SD card initialized!");
         sdCardAvailable = true;
     }
+
+    // Initialize logging button
+    pinMode(LOGGING_PIN, INPUT_PULLUP);
+    Serial.println("Logging button initialized!");
     
     // Initialize BLE
     Serial.println("Initializing BLE...");
@@ -309,6 +320,34 @@ void loop() {
     if (isTransferring && deviceConnected && sdCardAvailable) {
         continueFileTransfer();
     }
+
+    // Button state checking
+    int reading = digitalRead(buttonPin); // Read the button state
+
+    // If the button state has changed, reset the debounce timer
+    if (reading != lastButtonState) {
+        lastDebounceTime = millis();
+    }
+
+    // If the stable state persists beyond the debounce delay, register the press
+    if ((millis() - lastDebounceTime) > debounceDelay) {
+        if (reading == LOW && buttonState == HIGH) { // Button was released, now pressed
+            if (!isLogging && sdCardAvailable) {
+                startLogging();
+            } else if (!sdCardAvailable) {
+                String error = "Error: SD card not available";
+                pDataCharacteristic->setValue(error.c_str());
+                pDataCharacteristic->notify();
+                Serial.println(error);
+                updateLED(LED_ERROR);
+            } else if (isLogging) {
+                stopLogging();
+            }
+        }
+        buttonState = reading; // Update button state
+    }
+
+    lastButtonState = reading; // Save last reading for comparison
     
     // Debug output every 5 seconds
     if (currentTime - lastDebugTime > 5000) {
