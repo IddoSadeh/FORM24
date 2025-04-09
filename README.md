@@ -1,16 +1,16 @@
 # FORM24
 
-A device for IMU-based motion tracking and analysis using ESP32 microcontrollers.
+A device for IMU-based swimming stroke rate analysis using ESP32 microcontrollers.
 
 ## Overview
 
-FORM24 is a system that captures, processes, and analyzes motion data using ESP32 microcontrollers and IMU sensors. This repository contains the core codebase for operating the FORM24 device.
+This system captures, processes, and analyzes motion data using ESP32 microcontrollers and IMU sensors. This repository contains the core codebase for operating the FORM24 device.
 
 > **Note:** For experimental and prototype code, please see the [archive documentation](archive/README.md).
 
 ## Core Components
 
-The FORM24 system consists of three main components:
+The system consists of three main components:
 
 1. **Firmware** - [`core/imuLoggerAndTransfer.ino`](core/imuLoggerAndTransfer.ino)
    * ESP32 firmware for data collection and transmission
@@ -79,12 +79,14 @@ The FORM24 system consists of three main components:
 
 ### Circuit Design
 
-The complete circuit design is available online:
-[Circuit Designer Link](https://app.cirkitdesigner.com/project/71fc41e8-6a78-4813-9acc-cf6826728f7b)
+The complete circuit design:
 
-### Circuit Diagram
+
 
 ![Circuit Diagram](images/circuit_image_button.png)
+
+Also available online:
+[Circuit Designer Link](https://app.cirkitdesigner.com/project/71fc41e8-6a78-4813-9acc-cf6826728f7b)
 
 ### Hardware Documentation
 
