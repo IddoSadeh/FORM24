@@ -37,6 +37,7 @@ Initial data processing with code provided by FORM, including MATLAB processing:
 1. `ML_run.m` takes a file from the `data` folder and sends it to `decode_sensor_bin.py`
 2. `decode_sensor_bin.py` processes the data and outputs a CSV file to the `data` folder
 3. `read_data.m` is called by `ML_run.m` to convert the CSV into a MATLAB dataframe
+4. `plot_data.m` is run seperatly. **Implemented kalman filter for 3d positioning.**
 
 #### Running Python Code Without MATLAB
 To run the Python code without MATLAB:
